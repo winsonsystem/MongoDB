@@ -65,8 +65,9 @@ module.exports = async (req, res) => {
     if (fields) {
       const fieldList = fields.split(','); // "name,email,age" -> ['name', 'email', 'age']
       fieldList.forEach(field => {
-        projection[field.trim()] = 1; // Set projection for each field to 1 (include)
+        projection[field.trim()] = 1; // Include specified fields
       });
+      projection._id = 0; // Exclude the _id field
     }
 
     const documents = await targetCollection.find(filters, { projection }).toArray();
