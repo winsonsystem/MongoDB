@@ -10,8 +10,8 @@ module.exports = async (req, res) => {
   try {
     // Attempt to connect to MongoDB Atlas
     await client.connect();
-    const db = client.db('testdb'); // Replace 'testdb' with your database name
-    const collection = db.collection('items'); // Replace 'items' with your collection name
+    const db = client.db('sample_mflix'); // Replace 'testdb' with your database name
+    const collection = db.collection('users'); // Replace 'items' with your collection name
 
     // Optionally, perform a simple operation like listing collections
     const collections = await db.collections();
