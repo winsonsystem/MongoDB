@@ -1,4 +1,4 @@
-// /api/read.js
+
 
 const { MongoClient } = require('mongodb');
 
@@ -20,7 +20,7 @@ module.exports = async (req, res) => {
     await client.connect();
     const adminDb = client.db().admin();
 
-    // List all databases
+    // Check if database exists
     const databases = await adminDb.listDatabases();
     const dbExists = databases.databases.some(database => database.name === db);
 
@@ -31,7 +31,7 @@ module.exports = async (req, res) => {
 
     const targetDb = client.db(db);
 
-    // List all collections in the specified database
+    // Check if collection exists
     const collections = await targetDb.listCollections().toArray();
     const collectionExists = collections.some(col => col.name === collection);
 
@@ -42,35 +42,39 @@ module.exports = async (req, res) => {
 
     const targetCollection = targetDb.collection(collection);
 
-    // Convert filter values to appropriate types if necessary
-    Object.keys(filters).forEach(key => {
-      // If filter is a regex (like filtering by name or any string field)
-      if (key === 'name') {
-        filters[key] = { $regex: filters[key], $options: 'i' }; // case-insensitive regex
-      }
+    // Modify filters dynamically
+    const mongoFilters = {};
+    Object.keys(filters).forEach((key) => {
+      const value = filters[key];
 
-      // Example: Filter if field is a 2D array (adjust key based on your data structure)
-      if (key === 'arrayField') {
-        filters[key] = { $elemMatch: { $elemMatch: { $eq: filters[key] } } }; // Example for filtering inside a 2D array
-      }
-
-      // Example: Convert other fields to appropriate types, such as price to a number
-      if (key === 'price') {
-        filters[key] = Number(filters[key]);
+      if (value.includes('%3E')) { // Handle "greater than" conditions (encoded as %3E for ">")
+        const actualValue = Number(value.split('%3E')[1]);
+        mongoFilters[key] = { $gte: actualValue };
+      } else if (value.includes('%3C')) { // Handle "less than" conditions (encoded as %3C for "<")
+        const actualValue = Number(value.split('%3C')[1]);
+        mongoFilters[key] = { $lte: actualValue };
+      } else if (value === 'true' || value === 'false') { // Boolean conversion
+        mongoFilters[key] = value === 'true';
+      } else if (value.match(/^\d+$/)) { // Convert numbers
+        mongoFilters[key] = Number(value);
+      } else if (key.includes('.')) { // Handle nested fields (e.g., benefits.feature)
+        mongoFilters[key] = { $regex: new RegExp(value, 'i') }; // Using regex for case-insensitive match
+      } else {
+        mongoFilters[key] = { $regex: new RegExp(value, 'i') };
       }
     });
 
-    // Projection: To specify which fields to return
+    // Projection: Specify which fields to return
     let projection = {};
     if (fields) {
-      const fieldList = fields.split(','); // "name,email,age" -> ['name', 'email', 'age']
+      const fieldList = fields.split(','); // e.g. "name,email" -> ['name', 'email']
       fieldList.forEach(field => {
-        projection[field.trim()] = 1; // Include specified fields
+        projection[field.trim()] = 1;
       });
-      // projection._id = 0; // Exclude the _id field
+      projection._id = 0; // Optionally exclude _id
     }
 
-    const documents = await targetCollection.find(filters, { projection }).toArray();
+    const documents = await targetCollection.find(mongoFilters, { projection }).toArray();
 
     await client.close();
 
