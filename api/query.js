@@ -1,5 +1,3 @@
-
-
 const { MongoClient } = require('mongodb');
 
 const uri = process.env.MONGODB_URI;
@@ -20,7 +18,7 @@ module.exports = async (req, res) => {
     await client.connect();
     const adminDb = client.db().admin();
 
-    // Check if database exists
+    // Check if the database exists
     const databases = await adminDb.listDatabases();
     const dbExists = databases.databases.some(database => database.name === db);
 
@@ -31,7 +29,7 @@ module.exports = async (req, res) => {
 
     const targetDb = client.db(db);
 
-    // Check if collection exists
+    // Check if the collection exists
     const collections = await targetDb.listCollections().toArray();
     const collectionExists = collections.some(col => col.name === collection);
 
@@ -47,7 +45,11 @@ module.exports = async (req, res) => {
     Object.keys(filters).forEach((key) => {
       const value = filters[key];
 
-      if (value.includes('%3E')) { // Handle "greater than" conditions (encoded as %3E for ">")
+      // Handle array element search (e.g., benefits[].feature=cooling system)
+      if (key.includes('[].')) {
+        const [arrayField, nestedField] = key.split('[].'); // e.g. 'benefits[].feature' -> ['benefits', 'feature']
+        mongoFilters[arrayField] = { $elemMatch: { [nestedField]: { $regex: new RegExp(value, 'i') } } };
+      } else if (value.includes('%3E')) { // Handle "greater than" conditions (encoded as %3E for ">")
         const actualValue = Number(value.split('%3E')[1]);
         mongoFilters[key] = { $gte: actualValue };
       } else if (value.includes('%3C')) { // Handle "less than" conditions (encoded as %3C for "<")
@@ -57,10 +59,8 @@ module.exports = async (req, res) => {
         mongoFilters[key] = value === 'true';
       } else if (value.match(/^\d+$/)) { // Convert numbers
         mongoFilters[key] = Number(value);
-      } else if (key.includes('.')) { // Handle nested fields (e.g., benefits.feature)
-        mongoFilters[key] = { $regex: new RegExp(value, 'i') }; // Using regex for case-insensitive match
       } else {
-        mongoFilters[key] = { $regex: new RegExp(value, 'i') };
+        mongoFilters[key] = { $regex: new RegExp(value, 'i') }; // Default to regex for string matching
       }
     });
 
