@@ -47,7 +47,7 @@ module.exports = async (req, res) => {
     // Modify filters dynamically
     const mongoFilters = {};
     Object.keys(filters).forEach((key) => {
-      const value = filters[key];
+      const value = filters[key];   console.log(`  filtering key = ${key} ....  value = ${value}  >>  `, filters);
 
       // Handle array element search (e.g., benefits[].feature=cooling system)
       if (key.includes('[].')) {
@@ -58,7 +58,7 @@ module.exports = async (req, res) => {
         mongoFilters[key] = { $gte: actualValue };
       } else if (value.includes('%3C') || value.includes('lte')) { // Handle "less than" conditions (encoded as %3C for "<")
         const actualValue = Number(value.split('%3C')[1] || value.split('lte')[1]);
-        mongoFilters[key] = { $lte: actualValue };
+        mongoFilters[key] = { $lte: actualValue };      console.log(`  filtering value = ${value} ....  actualValue = ${actualValue} .... `);
       } else if (value === 'true' || value === 'false') { // Boolean conversion
         mongoFilters[key] = value === 'true';
       } else if (value.match(/^\d+$/)) { // Convert numbers
