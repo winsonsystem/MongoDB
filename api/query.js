@@ -54,10 +54,10 @@ module.exports = async (req, res) => {
         const [arrayField, nestedField] = key.split('[].'); // e.g. 'benefits[].feature' -> ['benefits', 'feature']
         mongoFilters[arrayField] = { $elemMatch: { [nestedField]: { $regex: new RegExp(value, 'i') } } };
       } else if (value.includes('%3E') || value.includes('gte')) { // Handle "greater than" conditions (encoded as %3E for ">")
-        const actualValue = Number(value.split('%3E')[1]);
+        const actualValue = Number(value.split('%3E')[1] || value.split('gte')[1]);
         mongoFilters[key] = { $gte: actualValue };
       } else if (value.includes('%3C') || value.includes('lte')) { // Handle "less than" conditions (encoded as %3C for "<")
-        const actualValue = Number(value.split('%3C')[1]);
+        const actualValue = Number(value.split('%3C')[1] || value.split('lte')[1]);
         mongoFilters[key] = { $lte: actualValue };
       } else if (value === 'true' || value === 'false') { // Boolean conversion
         mongoFilters[key] = value === 'true';
