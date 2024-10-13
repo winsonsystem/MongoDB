@@ -1,3 +1,7 @@
+// ## /api/query.js
+// ## GET /api/read?db=mydb&collection=mycollection&name=John&fields=name,email  -->  To query collection filtering name by regex and displaying only name, email fields
+// ## GET /api/read?db=mydb&collection=mycollection&arrayField=value             -->  filter inside a 2D array for a specific element:
+
 const { MongoClient } = require('mongodb');
 
 const uri = process.env.MONGODB_URI;
@@ -49,10 +53,10 @@ module.exports = async (req, res) => {
       if (key.includes('[].')) {
         const [arrayField, nestedField] = key.split('[].'); // e.g. 'benefits[].feature' -> ['benefits', 'feature']
         mongoFilters[arrayField] = { $elemMatch: { [nestedField]: { $regex: new RegExp(value, 'i') } } };
-      } else if (value.includes('%3E')) { // Handle "greater than" conditions (encoded as %3E for ">")
+      } else if (value.includes('%3E') || value.includes('gte')) { // Handle "greater than" conditions (encoded as %3E for ">")
         const actualValue = Number(value.split('%3E')[1]);
         mongoFilters[key] = { $gte: actualValue };
-      } else if (value.includes('%3C')) { // Handle "less than" conditions (encoded as %3C for "<")
+      } else if (value.includes('%3C') || value.includes('lte')) { // Handle "less than" conditions (encoded as %3C for "<")
         const actualValue = Number(value.split('%3C')[1]);
         mongoFilters[key] = { $lte: actualValue };
       } else if (value === 'true' || value === 'false') { // Boolean conversion
@@ -71,7 +75,7 @@ module.exports = async (req, res) => {
       fieldList.forEach(field => {
         projection[field.trim()] = 1;
       });
-      projection._id = 0; // Optionally exclude _id
+      // projection._id = 0;     // Optionally exclude _id
     }
 
     const documents = await targetCollection.find(mongoFilters, { projection }).toArray();
