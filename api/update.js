@@ -10,14 +10,14 @@ module.exports = async (req, res) => {
     return res.status(405).json({ status: 'err', message: 'Method Not Allowed', error: {} });
   }
 
-  const { db, collection, updates } = req.body;
+  const { db, collection, items } = req.body;
 
-  if (!db || !collection || !updates) {
-    return res.status(400).json({ status: 'err', message: 'Missing "db", "collection", or "updates" in request body', error: {} });
+  if (!db || !collection || !items) {
+    return res.status(400).json({ status: 'err', message: 'Missing "db", "collection", or "items" in request body', error: {} });
   }
 
-  if (!Array.isArray(updates)) {
-    return res.status(400).json({ status: 'err', message: '"updates" must be an array', error: {} });
+  if (!Array.isArray(items)) {
+    return res.status(400).json({ status: 'err', message: '"items" must be an array', error: {} });
   }
 
   try {
@@ -48,7 +48,7 @@ module.exports = async (req, res) => {
 
     const updateResults = [];
 
-    for (const update of updates) {
+    for (const update of items) {
       const { id, ...fieldsToUpdate } = update;
 
       if (!id) {
