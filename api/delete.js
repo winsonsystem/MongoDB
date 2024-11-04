@@ -1,4 +1,4 @@
-// /api/delete.js
+// 2024-10-28: Enhance code to delete based on id, or whole collection (param: deleteAll = "message2u")
 
 const { MongoClient, ObjectId } = require('mongodb');
 
@@ -10,14 +10,14 @@ module.exports = async (req, res) => {
     return res.status(405).json({ status: 'err', message: 'Method Not Allowed', error: {} });
   }
 
-  const { db, collection, ids } = req.body;
+  const { db, collection, items, trxndate, deleteAll } = req.body;
 
-  if (!db || !collection || !ids) {
-    return res.status(400).json({ status: 'err', message: 'Missing "db", "collection", or "ids" in request body', error: {} });
+  if (!db || !collection || (!items && !deleteAll)) {
+    return res.status(400).json({ status: 'err', message: 'Missing "db", "collection", and either "items", or "deleteAll" in request body', error: {} });
   }
 
-  if (!Array.isArray(ids)) {
-    return res.status(400).json({ status: 'err', message: '"ids" must be an array', error: {} });
+  if (items && !Array.isArray(items)) {
+    return res.status(400).json({ status: 'err', message: '"items" must be an array', error: {} });
   }
 
   try {
@@ -46,21 +46,32 @@ module.exports = async (req, res) => {
 
     const targetCollection = targetDb.collection(collection);
 
-    // Convert string IDs to ObjectId and filter out invalid IDs
-    const objectIds = ids.map(id => {
-      try {
-        return ObjectId(id);
-      } catch (error) {
-        return null;
-      }
-    }).filter(id => id !== null);
+    // Determine the deletion query based on provided parameters
+    let query = {};
+    if (deleteAll == "message2u") {
+      query = {};  // Empty query will delete all documents
 
-    if (objectIds.length === 0) {
-      await client.close();
-      return res.status(400).json({ status: 'err', message: 'No valid IDs provided', error: {} });
+    } else if (items) {
+      const objectitems = items.map(id => {
+        try {
+          return ObjectId(id);
+        } catch (error) {
+          return null;
+        }
+      }).filter(id => id !== null);
+
+      if (objectitems.length === 0) {
+        await client.close();
+        return res.status(400).json({ status: 'err', message: 'No valid items provided', error: {} });
+      }
+
+      query = { _id: { $in: objectitems } };
+    } else if (trxndate) {
+      query = { trxndate: trxndate };
     }
 
-    const result = await targetCollection.deleteMany({ _id: { $in: objectIds } });
+    // Execute delete operation based on the constructed query
+    const result = await targetCollection.deleteMany(query);
 
     await client.close();
 
